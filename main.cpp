@@ -56,7 +56,6 @@ void optimizedMD5(std::vector<void*>& packets) {
 }
 
 #include "md5-x86-asm.h"
-#include "md5-arm-asm.h"
 
 template<typename HT>
 void md5_init(MD5_STATE<HT>* state) {
