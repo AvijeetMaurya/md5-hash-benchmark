@@ -57,7 +57,7 @@ void optimizedMD5(std::vector<std::pair<void*, int>>& packets) {
 #include "md5-x86-asm.h"
 
 template<typename HT>
-void md5_init(MD5_STATE<HT>* state) {
+void md5_init(volatile MD5_STATE<HT>* state) {
 	state->A = 0x67452301;
 	state->B = 0xefcdab89;
 	state->C = 0x98badcfe;
@@ -65,7 +65,7 @@ void md5_init(MD5_STATE<HT>* state) {
 }
 
 template<typename HT, void(&fn)(MD5_STATE<HT>*, const void*)>
-void md5(MD5_STATE<HT>* state, const void* __restrict__ src, size_t len) {
+void md5(volatile MD5_STATE<HT>* state, const void* __restrict__ src, size_t len) {
 	md5_init<HT>(state);
 	char* __restrict__ _src = (char* __restrict__)src;
 	uint64_t totalLen = len << 3; // length in bits
@@ -91,13 +91,12 @@ void md5(MD5_STATE<HT>* state, const void* __restrict__ src, size_t len) {
 			memset(block + len, 0, 64-8 - len);
 			memcpy(block + 64-8, &totalLen, 8);
 		}
-		
 		fn(state, block);
 	}
 }
 
 void externalMD5(std::vector<std::pair<void*, int>>& packets) {
-    MD5_STATE<uint32_t> hash;
+    volatile MD5_STATE<uint32_t> hash;
     for (const auto packet : packets) {
         // different optimizations
         //md5<uint32_t, md5_block_std>(&hash, packet, PACKET_SIZE);
