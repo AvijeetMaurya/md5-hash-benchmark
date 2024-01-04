@@ -7,8 +7,6 @@
 
 #include "snippet.h"
 
-constexpr int PACKET_SIZE = 200;
-
 void printMD5(unsigned char* out) {
     for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
         std::cout << std::hex << static_cast<int>(out[i]);
@@ -16,25 +14,26 @@ void printMD5(unsigned char* out) {
     std::cout << '\n';
 }
 
-void randomizeBuffer(unsigned char* buf) {
-    for (int i = 0; i < PACKET_SIZE; ++i) {
+void randomizeBuffer(unsigned char* buf, int packetSize) {
+    for (int i = 0; i < packetSize; ++i) {
         buf[i] = static_cast<unsigned char>(std::rand() % 256);
     }
 }
 
-void randomizePackets(std::vector<void*>& packets) {
-    int count = 1000000;
+void randomizePackets(std::vector<std::pair<void*, int>>& packets) {
+    int count = 10000000;
     while (count--) {
-        auto buf = new unsigned char[PACKET_SIZE];
-        randomizeBuffer(buf);
-        packets.push_back(buf);
+        int packetSize = std::rand() % 200 + 100;
+        auto buf = new unsigned char[packetSize];
+        randomizeBuffer(buf, packetSize);
+        packets.push_back({buf, packetSize});
     }
 }
 
-void unoptimizedMD5(std::vector<void*>& packets) {
+void unoptimizedMD5(std::vector<std::pair<void*, int>>& packets) {
     auto* out = new unsigned char[MD5_DIGEST_LENGTH];
     for (const auto packet : packets) {
-        calculate_md5(packet, PACKET_SIZE, out);
+        calculate_md5(packet.first, packet.second, out);
         //printMD5(out);
     }
 }
@@ -45,11 +44,11 @@ void calculate_md5_optimized(EVP_MD_CTX* mdctx, const void* buf, size_t buf_size
     EVP_DigestFinal_ex(mdctx, res, nullptr);
 }
 
-void optimizedMD5(std::vector<void*>& packets) {
+void optimizedMD5(std::vector<std::pair<void*, int>>& packets) {
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     auto* out = new unsigned char[MD5_DIGEST_LENGTH];
     for (const auto packet : packets) {
-        calculate_md5_optimized(mdctx, packet, PACKET_SIZE, out);
+        calculate_md5_optimized(mdctx, packet.first, packet.second, out);
         //printMD5(out);
     }
     EVP_MD_CTX_free(mdctx);
@@ -97,7 +96,7 @@ void md5(MD5_STATE<HT>* state, const void* __restrict__ src, size_t len) {
 	}
 }
 
-void externalMD5(std::vector<void*>& packets) {
+void externalMD5(std::vector<std::pair<void*, int>>& packets) {
     MD5_STATE<uint32_t> hash;
     for (const auto packet : packets) {
         // different optimizations
@@ -107,14 +106,14 @@ void externalMD5(std::vector<void*>& packets) {
         //md5<uint32_t, md5_block_noleagh>(&hash, packet, PACKET_SIZE);
         //md5<uint32_t, md5_block_cache4>(&hash, packet, PACKET_SIZE);
         //md5<uint32_t, md5_block_cache8>(&hash, packet, PACKET_SIZE);
-        md5<uint32_t, md5_block_cache_gopt>(&hash, packet, PACKET_SIZE);
+        md5<uint32_t, md5_block_cache_gopt>(&hash, packet.first, packet.second);
         //printMD5(reinterpret_cast<unsigned char*>(&hash));
     }
 }
 
 int main() {
     std::srand(time(0));
-    std::vector<void*> packets;
+    std::vector<std::pair<void*, int>> packets; // first: buf, second: size
     randomizePackets(packets);
 
     auto start = std::chrono::system_clock::now();
