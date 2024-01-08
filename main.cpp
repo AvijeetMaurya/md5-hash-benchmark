@@ -72,7 +72,6 @@ void calculate_md5_optimized(EVP_MD_CTX* mdctx, const void* buf, size_t buf_size
 void optimizedMD5(std::vector<Packet>& packets, std::vector<int>& indices) {
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     auto* out = new unsigned char[MD5_DIGEST_LENGTH];
-    #pragma GCC unroll 0
     for (const auto index : indices) {
         calculate_md5_optimized(mdctx, packets[index].buf.get(), packets[index].size, out);
         //printMD5(out);
